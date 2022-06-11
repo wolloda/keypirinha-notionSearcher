@@ -1,7 +1,6 @@
 # Keypirinha launcher (keypirinha.com)
 
 import os
-import re
 import time
 
 import keypirinha as kp
@@ -56,7 +55,6 @@ class Notion(kp.Plugin):
         super().__init__()
         self._debug = True
         self._pages = []
-        self.ICONS_CACHE_DIR = os.path.join(self.get_package_cache_path(), "icons")
 
     def on_start(self):
         self._read_config()
@@ -64,8 +62,6 @@ class Notion(kp.Plugin):
         self._notion_searcher = NotionSearcher(self._NOTION_SECRET)
 
         # self._clear_images()
-        # if not os.path.isdir(self.ICONS_CACHE_DIR):
-        #     os.makedirs(self.ICONS_CACHE_DIR)
 
         self._refresh_pages()
 
@@ -137,7 +133,8 @@ class Notion(kp.Plugin):
 
     def _read_config(self):
         settings = self.load_settings()
-        self._NOTION_SECRET = settings.get("NOTION_SECRET", "var", unquote=True)
+        self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
+        self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "var")
         self.clear_actions()
 
     def _create_actions(self):
@@ -156,7 +153,7 @@ class Notion(kp.Plugin):
 
     def _refresh_pages(self):
         start = time.time()
-        self._pages = self._notion_searcher.search()
+        self._pages = self._notion_searcher.search(self._MATCH_PARENTS)
         end = time.time()
         self.info(f"list of notion pages refreshed in {end - start} seconds")
         # self._download_icons()
@@ -169,10 +166,6 @@ class Notion(kp.Plugin):
                 except:
                     self.err(f"{page['iconURL']} unavailable")
 
-    def _clear_images(self):
-        # TODO: free images
-        pass
-
     def _generate_suggestions(self, user_input = None):
         suggestions = []
 
@@ -181,14 +174,14 @@ class Notion(kp.Plugin):
 
         for suggestion in self._pages:
             icon_handle = None
-            # icon_path = os.path.join(self.ICONS_CACHE_DIR, suggestion['iconName'])
-            # if os.path.isfile(icon_path):
-            #     print(f"file exists {icon_path}")
-            #     icon_handle = self.load_icon(icon_path)
+
+            label = suggestion["name"]
+            if suggestion["parent"]:
+                label += f" ({suggestion['parent']})"
 
             suggestions.append(self.create_item(
                 category=self.NOTION_PAGE_CATEGORY,
-                label=suggestion["name"],
+                label=label,
                 short_desc=suggestion["url"],
                 target=suggestion["url"],
                 icon_handle=icon_handle,
