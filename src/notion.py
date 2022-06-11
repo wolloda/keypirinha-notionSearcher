@@ -100,7 +100,7 @@ class Notion(kp.Plugin):
 
         if item.category() == kp.ItemCategory.KEYWORD:
             if item.target() == "reload_pages":
-                self._generate_suggestions()
+                self._refresh_pages()
                 return
 
         # open page in browser
@@ -166,7 +166,7 @@ class Notion(kp.Plugin):
                 except:
                     self.err(f"{page['iconURL']} unavailable")
 
-    def _generate_suggestions(self, user_input = None):
+    def _generate_suggestions(self):
         suggestions = []
 
         if not self._pages:
