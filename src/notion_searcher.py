@@ -79,7 +79,7 @@ class NotionSearcher():
                 name += result["properties"][title_field]["title"][i]["plain_text"]
 
         if name == "":
-            name = "<unnamed page>"
+            name = "Untitled"
 
         return name
 
