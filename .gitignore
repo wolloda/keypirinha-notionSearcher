@@ -1,3 +1,6 @@
 .env
-src/notion.ini
+src/runner.py
+__pycache__/
 build/
+
+runner.py

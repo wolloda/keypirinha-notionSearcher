@@ -155,7 +155,7 @@ class Notion(kp.Plugin):
         start = time.time()
         self._pages = self._notion_searcher.search(self._MATCH_PARENTS)
         end = time.time()
-        self.info(f"list of notion pages refreshed in {end - start} seconds")
+        self.info(f"list of {len(self._pages)} notion pages refreshed in {end - start} seconds")
         # self._download_icons()
 
     def _download_icons(self):
@@ -167,10 +167,10 @@ class Notion(kp.Plugin):
                     self.err(f"{page['iconURL']} unavailable")
 
     def _generate_suggestions(self):
-        suggestions = []
-
         if not self._pages:
             return []
+
+        suggestions = []
 
         for suggestion in self._pages:
             icon_handle = None
