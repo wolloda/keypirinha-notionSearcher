@@ -4,8 +4,9 @@ import time
 import re
 
 class NotionSearcher():
-    def __init__(self, notion_secret):
+    def __init__(self, notion_secret, skip_untitled_pages):
         self._NOTION_SECRET = notion_secret
+        self._SKIP_UNTITLED_PAGES = skip_untitled_pages
         self._pages = []
 
     def search(self, match_parents: bool = True) -> list:
@@ -62,6 +63,9 @@ class NotionSearcher():
 
         if match_parents:
             search_results = self.match_parents(search_results)
+
+        if self._SKIP_UNTITLED_PAGES:
+            search_results = list(filter(lambda result: result["name"] != "Untitled", search_results))
 
         return search_results
 

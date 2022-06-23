@@ -59,7 +59,7 @@ class Notion(kp.Plugin):
     def on_start(self):
         self._read_config()
         self._create_actions()
-        self._notion_searcher = NotionSearcher(self._NOTION_SECRET)
+        self._notion_searcher = NotionSearcher(self._NOTION_SECRET, self._SKIP_UNTITLED_PAGES)
 
         # self._clear_images()
 
@@ -134,7 +134,8 @@ class Notion(kp.Plugin):
     def _read_config(self):
         settings = self.load_settings()
         self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
-        self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "var")
+        self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "main", True)
+        self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
         self.clear_actions()
 
     def _create_actions(self):
