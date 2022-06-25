@@ -1,7 +1,7 @@
 import json
-import urllib.request
-import time
+import os
 import re
+import urllib.request
 
 class NotionSearcher():
     def __init__(self, notion_secret, skip_untitled_pages):
@@ -24,7 +24,8 @@ class NotionSearcher():
                 continue
 
             name = self.parse_name(result)
-            icon = ""
+            icon_URL = None
+            icon_name = None
             url = ""
 
             parent_id = ""
@@ -36,10 +37,10 @@ class NotionSearcher():
 
             # FIXME: try-except -> if else?
             try:
-                icon = result["icon"]["external"]["url"]
+                icon_URL = result["icon"]["external"]["url"]
             except (KeyError, TypeError):
                 try:
-                    icon = result["icon"]["file"]["url"]
+                    icon_URL = result["icon"]["file"]["url"]
                 except (KeyError, TypeError):
                     pass
 
@@ -51,13 +52,21 @@ class NotionSearcher():
             id = result["id"]
             url = result["url"]
 
+            if icon_URL is not None:
+                icon_name = self.clean_filename(icon_URL)
+                _, icon_extension = os.path.splitext(icon_name)
+
+                if icon_extension.upper() not in ['.ICO', '.PNG', '.JPG', '.JPEG']:
+                    icon_URL = None
+                    icon_name = None
+
             search_results.append({
                 "id": id,
                 "name": name,
                 "parent": "",
                 "parent_id": parent_id,
-                "iconURL": icon,
-                "iconName": self.clean_filename(icon),
+                "iconURL": icon_URL,
+                "iconName": icon_name,
                 "url": url
             })
 

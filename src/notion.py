@@ -2,6 +2,7 @@
 
 import os
 import time
+import re
 
 import keypirinha as kp
 import keypirinha_util as kpu
@@ -46,6 +47,7 @@ class Notion(kp.Plugin):
     APP_URI_HANDLER = "notion://"
 
     DEFAULT_ICON = "res://Notion/img/notion_logo.png"
+    ICONS_FOLDER_NAME = "icons"
 
     ACTION_OPEN_BROWSER = "open_browser"
     ACTION_OPEN_APP = "open_app"
@@ -53,15 +55,16 @@ class Notion(kp.Plugin):
 
     def __init__(self):
         super().__init__()
-        self._debug = True
+        # self._debug = True
         self._pages = []
+        self._IMAGES_PATH = os.path.join(self.get_package_cache_path(), self.ICONS_FOLDER_NAME)
 
     def on_start(self):
+        os.makedirs(self._IMAGES_PATH, exist_ok = True)
+
         self._read_config()
         self._create_actions()
         self._notion_searcher = NotionSearcher(self._NOTION_SECRET, self._SKIP_UNTITLED_PAGES)
-
-        # self._clear_images()
 
         self._refresh_pages()
 
@@ -83,7 +86,15 @@ class Notion(kp.Plugin):
                 short_desc="Reload list of pages",
                 target="reload_pages",
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
+                hit_hint=kp.ItemHitHint.NOARGS),
+            self.create_item(
+                category=kp.ItemCategory.KEYWORD,
+                label="Notion: Remove images",
+                short_desc="Remove downloaded images",
+                target="remove_images",
+                args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.NOARGS)
+
         ]
 
         self.set_catalog(catalog)
@@ -101,6 +112,10 @@ class Notion(kp.Plugin):
         if item.category() == kp.ItemCategory.KEYWORD:
             if item.target() == "reload_pages":
                 self._refresh_pages()
+                return
+
+            if item.target() == "remove_images":
+                self._clear_images(remove_all=True)
                 return
 
         # open page in browser
@@ -128,7 +143,6 @@ class Notion(kp.Plugin):
         self._read_config()
         self.on_catalog()
 
-        # self._clear_images()
         self._refresh_pages()
 
     def _read_config(self):
@@ -136,6 +150,7 @@ class Notion(kp.Plugin):
         self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
         self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "main", True)
         self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
+        self._DOWNLOAD_ICONS = settings.get_bool("download_icons", "main", True)
         self.clear_actions()
 
     def _create_actions(self):
@@ -157,15 +172,34 @@ class Notion(kp.Plugin):
         self._pages = self._notion_searcher.search(self._MATCH_PARENTS)
         end = time.time()
         self.info(f"list of {len(self._pages)} notion pages refreshed in {end - start} seconds")
-        # self._download_icons()
+
+        if self._DOWNLOAD_ICONS:
+            start = time.time()
+            self._download_icons()
+            end = time.time()
+            self.info(f"Page icons downloaded in {end - start} seconds")
+
+        self._clear_images()
 
     def _download_icons(self):
         for page in self._pages:
-            if page["iconURL"]:
+            if page["iconURL"] and page["iconName"]:
                 try:
-                    urllib.request.urlretrieve(page["iconURL"], f"{self.ICONS_CACHE_DIR}/{page['iconName']}")
+                    urllib.request.urlretrieve(page["iconURL"], os.path.join(self._IMAGES_PATH, page["iconName"]))
                 except:
-                    self.err(f"{page['iconURL']} unavailable")
+                    self.err(f"Unable to download icon for page \"{page['name']}\" at URL: {page['iconURL']}")
+
+    def _clear_images(self, remove_all: bool = False):
+        images = []
+        if not remove_all:
+            images = list(map(lambda page: page["iconName"], self._pages))
+
+        downloaded_images = os.listdir(self._IMAGES_PATH)
+        images_to_delete = [image for image in downloaded_images if image not in images]
+        for image in images_to_delete:
+            self.info(f"{image} deleted")
+            os.remove(os.path.join(self._IMAGES_PATH, image))
+
 
     def _generate_suggestions(self):
         if not self._pages:
@@ -177,6 +211,14 @@ class Notion(kp.Plugin):
             icon_handle = None
 
             label = suggestion["name"]
+
+            if suggestion["iconName"]:
+                icon_path = os.path.join(self._IMAGES_PATH, suggestion["iconName"])
+
+                if os.path.isfile(icon_path):
+                    icon_path = f"cache://{self.package_full_name()}/{self.ICONS_FOLDER_NAME}/{suggestion['iconName']}"
+                    icon_handle = self.load_icon(icon_path)
+
             if suggestion["parent"]:
                 label += f" ({suggestion['parent']})"
 
