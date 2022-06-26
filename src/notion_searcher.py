@@ -146,6 +146,6 @@ class NotionSearcher():
                 return key
 
     def clean_filename(self, filename):
-        filename = re.sub('https://', '', filename)
+        filename = re.sub('https?://', '', filename)
         filename = re.sub('/', '-', filename)
         return filename

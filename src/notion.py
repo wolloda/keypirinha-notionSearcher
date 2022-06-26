@@ -55,7 +55,7 @@ class Notion(kp.Plugin):
 
     def __init__(self):
         super().__init__()
-        # self._debug = True
+        self._debug = True
         self._pages = []
         self._IMAGES_PATH = os.path.join(self.get_package_cache_path(), self.ICONS_FOLDER_NAME)
 
@@ -94,7 +94,6 @@ class Notion(kp.Plugin):
                 target="remove_images",
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.NOARGS)
-
         ]
 
         self.set_catalog(catalog)
@@ -147,10 +146,13 @@ class Notion(kp.Plugin):
 
     def _read_config(self):
         settings = self.load_settings()
+
         self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
         self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "main", True)
         self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
+
         self._DOWNLOAD_ICONS = settings.get_bool("download_icons", "main", True)
+        self._FORCE_ICON_DOWNLOAD = settings.get_bool("force_icon_download", "main", True)
         self.clear_actions()
 
     def _create_actions(self):
@@ -175,19 +177,24 @@ class Notion(kp.Plugin):
 
         if self._DOWNLOAD_ICONS:
             start = time.time()
-            self._download_icons()
+            self._download_icons(self._FORCE_ICON_DOWNLOAD)
             end = time.time()
             self.info(f"Page icons downloaded in {end - start} seconds")
 
         self._clear_images()
 
-    def _download_icons(self):
+    def _download_icons(self, force_download=False):
         for page in self._pages:
-            if page["iconURL"] and page["iconName"]:
+            if not page["iconURL"] or not page["iconName"]:
+                continue
+
+            icon_path = os.path.join(self._IMAGES_PATH, page["iconName"])
+            if force_download or not os.path.isfile(icon_path):
                 try:
-                    urllib.request.urlretrieve(page["iconURL"], os.path.join(self._IMAGES_PATH, page["iconName"]))
-                except:
-                    self.err(f"Unable to download icon for page \"{page['name']}\" at URL: {page['iconURL']}")
+                    urllib.request.urlretrieve(page["iconURL"], icon_path)
+                    # self.dbg(f"Downloaded icon -- page: {page['name']}, iconURL: {page['iconURL']}, iconName: {page['iconName']}")
+                except Exception as e:
+                    self.err(f"Unable to download icon for page \"{page['name']}\" at URL: {page['iconURL']}. Error: {e}")
 
     def _clear_images(self, remove_all: bool = False):
         images = []
