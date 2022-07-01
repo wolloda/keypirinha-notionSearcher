@@ -63,10 +63,10 @@ class Notion(kp.Plugin):
         os.makedirs(self._IMAGES_PATH, exist_ok = True)
 
         self._read_config()
-        self._create_actions()
         self._notion_searcher = NotionSearcher(self._NOTION_SECRET, self._SKIP_UNTITLED_PAGES)
 
         self._refresh_pages()
+        self._suggestions = self._generate_suggestions()
 
         self.set_default_icon(self.load_icon(self.DEFAULT_ICON))
 
@@ -96,13 +96,18 @@ class Notion(kp.Plugin):
                 hit_hint=kp.ItemHitHint.NOARGS)
         ]
 
+        self.clear_actions(category=self.NOTION_PAGE_CATEGORY)
         self.set_catalog(catalog)
 
     def on_suggest(self, user_input, items_chain):
+        if not user_input:
+            return
+
         if items_chain and items_chain[-1].target() == 'find_pages':
             self.set_suggestions(
-                self._generate_suggestions()
+                self._suggestions
             )
+            self._create_actions()
 
     def on_execute(self, item, action):
         if item.category() not in (self.NOTION_PAGE_CATEGORY, kp.ItemCategory.KEYWORD):
