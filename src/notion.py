@@ -10,9 +10,6 @@ import keypirinha_net as kpnet
 
 import urllib.request
 
-# from .lib import requests
-# from .lib import urllib3
-
 from .notion_searcher import NotionSearcher
 
 class Notion(kp.Plugin):
@@ -66,7 +63,6 @@ class Notion(kp.Plugin):
         self._notion_searcher = NotionSearcher(self._NOTION_SECRET, self._SKIP_UNTITLED_PAGES)
 
         self._refresh_pages()
-        self._suggestions = self._generate_suggestions()
 
         self.set_default_icon(self.load_icon(self.DEFAULT_ICON))
 
@@ -145,9 +141,9 @@ class Notion(kp.Plugin):
 
     def on_events(self, flags):
         self._read_config()
-        self.on_catalog()
 
-        self._refresh_pages()
+        if flags != kp.Events.DESKTOP:
+            self._refresh_pages()
 
     def _read_config(self):
         settings = self.load_settings()
@@ -187,6 +183,7 @@ class Notion(kp.Plugin):
             self.info(f"Page icons downloaded in {end - start} seconds")
 
         self._clear_images()
+        self._suggestions = self._generate_suggestions()
 
     def _download_icons(self, force_download=False):
         for page in self._pages:
