@@ -1,15 +1,12 @@
 # Keypirinha Plugin: Notion
 
-This is Notion, a plugin for the
-[Keypirinha](http://keypirinha.com) launcher.
+This is a Notion, a plugin for the [Keypirinha](http://keypirinha.com) launcher.
 
-It allows users to search their Notion workspaces for pages by their names
+It allows to search and open Notion pages.
 
 ## Download
 
-**TODO:** indicate where the latest `.keypirinha-package` file can be
-downloaded. For example a URL to the `releases` list like:
-https://github.com/USERNAME/keypirinha-PACKAGE/releases
+[https://github.com/wolloda/keypirinha-notionSearcher/releases](https://github.com/wolloda/keypirinha-notionSearcher/releases)
 
 ## Install
 
@@ -22,26 +19,34 @@ move it to the `InstalledPackage` folder located at:
   `C:\Users\%USERNAME%\AppData\Roaming\Keypirinha\InstalledPackages`)
 
 
+To access your Notion pages, following steps are required:
+
+* Visit ["My integrations"](https://github.com/wolloda/keypirinha-notionSearcher/releases)
+* Create a new integration
+	* only necessary *Content Capability* is *Read content*
+	* no *Comment  Capabilities* needed
+	* no *User Capability* needed
+* Copy *Internal Integration Token* and paste it in the `[var]` section of `Notion.ini` config file
+
+## Options
+
+* [main]
+	* `show_parent_page_name` — show page's parent page in the result
+	* `skip_untitle_pages` — show pages that don't have a name (good for unnamed database entries)
+	* `download_icons` — download and show page icons
+* [var]
+	* `notion_secret` —  integration secret that allows this plugin to work
+
 ## Usage
 
-**TODO:** list the items, if any, inserted to the Catalog by the plugin(s) of
-this package. Some plugins only make suggestions, in which case a description of
-what kind of suggestions are to be expected by the user may help.
-
+Following commands are created:
+* `Notion: Find page` searches for pages by their name
+	* when `Tab` is pressed on a result, it allows to *open a page in a browser*, *open a page in
+		an installed Notion app*, and *copy URL to page*
+* `Notion: Reload pages` catalog of pages does not refresh automatically, therefore runing this
+	command is needed to index new pages and reindex changes (renaming pages, etc.)
+* `Notion: Remove images` removes downloaded page icons
 
 ## License
 
 This package is distributed under the terms of the MIT license.
-
-
-## Contribute
-
-**TODO:** optional section. Below is a template example, based on the one found
-in Keypirinha's Packages repository.
-
-1. Check for open issues or open a fresh issue to start a discussion around a
-   feature idea or a bug.
-2. Fork this repository on GitHub to start making your changes to the **dev**
-   branch.
-3. Send a pull request.
-4. Add yourself to the *Contributors* section below (or create it if needed)!
