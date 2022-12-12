@@ -26,6 +26,11 @@ To access your Notion pages, following steps are required:
 	* only necessary *Content Capability* is *Read content*
 	* no *Comment  Capabilities* needed
 	* no *User Capability* needed
+* Allow the newly created integration to access your pages:
+	* Press the `...` in the upper right corner of a page
+	* In `Connections` click on *Add connections* and select the integration
+	* Do this for pages that are going to be searched
+		* Only the topmost pages has to be connected - all pages in them inherit this behaviour
 * Copy *Internal Integration Token* and paste it in the `[var]` section of `Notion.ini` config file
 
 ## Options
