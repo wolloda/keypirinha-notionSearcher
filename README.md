@@ -21,7 +21,7 @@ move it to the `InstalledPackage` folder located at:
 
 To access your Notion pages, following steps are required:
 
-* Visit ["My integrations"](https://github.com/wolloda/keypirinha-notionSearcher/releases)
+* Visit ["My integrations"](https://www.notion.so/my-integrations)
 * Create a new integration
 	* only necessary *Content Capability* is *Read content*
 	* no *Comment  Capabilities* needed
