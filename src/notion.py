@@ -157,7 +157,7 @@ class Notion(kp.Plugin):
         self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
         self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "main", True)
         self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
-        self._SEARCH_MODE = settings.get_bool("global_results", "main", False)
+        self._SEARCH_MODE = settings.get_bool("global_results", "main", True)
         self._DOWNLOAD_ICONS = settings.get_bool("download_icons", "main", True)
         self._FORCE_ICON_DOWNLOAD = settings.get_bool("force_icon_download", "main", True)
         self.clear_actions()
