@@ -69,30 +69,36 @@ class Notion(kp.Plugin):
         self.set_default_icon(self.load_icon(self.DEFAULT_ICON))
 
     def on_catalog(self):
-        catalog = [
-            self.create_item(
-                category=kp.ItemCategory.KEYWORD,
-                label="Notion: Find page",
-                short_desc="Find pages by their names",
-                target="find_pages",
-                args_hint=kp.ItemArgsHint.REQUIRED,
-                hit_hint=kp.ItemHitHint.KEEPALL
-            ),
-            self.create_item(
-                category=kp.ItemCategory.KEYWORD,
-                label="Notion: Reload pages",
-                short_desc="Reload list of pages",
-                target="reload_pages",
-                args_hint=kp.ItemArgsHint.FORBIDDEN,
-                hit_hint=kp.ItemHitHint.NOARGS),
-            self.create_item(
-                category=kp.ItemCategory.KEYWORD,
-                label="Notion: Remove images",
-                short_desc="Remove downloaded images",
-                target="remove_images",
-                args_hint=kp.ItemArgsHint.FORBIDDEN,
-                hit_hint=kp.ItemHitHint.NOARGS)
-        ]
+        catalog = []
+
+        if self._SEARCH_MODE:
+            catalog.extend(self._generate_suggestions())  # Add Notion pages directly to the catalog
+    
+        else:
+            catalog = [
+                self.create_item(
+                    category=self.NOTION_PAGE_CATEGORY,
+                    label="Notion: Find page",
+                    short_desc="Find pages by their names",
+                    target="find_pages",
+                    args_hint=kp.ItemArgsHint.REQUIRED,
+                    hit_hint=kp.ItemHitHint.KEEPALL
+                ),
+                self.create_item(
+                    category=self.NOTION_PAGE_CATEGORY,
+                    label="Notion: Reload pages",
+                    short_desc="Reload list of pages",
+                    target="reload_pages",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.NOARGS),
+                self.create_item(
+                    category=self.NOTION_PAGE_CATEGORY,
+                    label="Notion: Remove images",
+                    short_desc="Remove downloaded images",
+                    target="remove_images",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.NOARGS)
+            ]
 
         self.clear_actions(category=self.NOTION_PAGE_CATEGORY)
         self.set_catalog(catalog)
@@ -102,7 +108,9 @@ class Notion(kp.Plugin):
             return
 
         if items_chain and items_chain[-1].target() == 'find_pages':
-            self.set_suggestions( self._generate_page_suggestions() )
+            self.set_suggestions(
+                self._generate_suggestions()
+            )
             self._create_actions()
 
     def on_execute(self, item, action):
@@ -151,7 +159,7 @@ class Notion(kp.Plugin):
         self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
         self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "main", True)
         self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
-
+        self._SEARCH_MODE = settings.get_bool("global_results", "main", True)
         self._DOWNLOAD_ICONS = settings.get_bool("download_icons", "main", True)
         self._FORCE_ICON_DOWNLOAD = settings.get_bool("force_icon_download", "main", True)
         self.clear_actions()
@@ -232,7 +240,7 @@ class Notion(kp.Plugin):
                 label += f" ({suggestion['parent']})"
 
             suggestions.append(self.create_item(
-                category=self.NOTION_PAGE_CATEGORY,
+                category=self.NOTION_PAGE_CATEGORY,  # Changed from self.NOTION_PAGE_CATEGORY
                 label=label,
                 short_desc=suggestion["url"],
                 target=suggestion["url"],

@@ -46,6 +46,7 @@ To access your Notion pages, following steps are required:
 	* `show_parent_page_name` — show name of the page's parent page in the result
 	* `skip_untitled_pages` — skip pages that don't have a name (i.e. unnamed database entries)
 	* `download_icons` — download and show page icons
+	* `global_results` — pages shown in global catalogue without needing to query `Notion: Find page` to search page names.
 * [var]
 	* `notion_secret` —  integration secret that allows this plugin to work
 
