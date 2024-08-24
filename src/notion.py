@@ -52,18 +52,20 @@ class Notion(kp.Plugin):
 
     def __init__(self):
         super().__init__()
-        self._debug = True
+        self._debug = False
         self._pages = []
         self._IMAGES_PATH = os.path.join(self.get_package_cache_path(), self.ICONS_FOLDER_NAME)
 
     def on_start(self):
-        os.makedirs(self._IMAGES_PATH, exist_ok = True)
-
         self._read_config()
         self._notion_searcher = NotionSearcher(self._NOTION_SECRET, self._SKIP_UNTITLED_PAGES)
 
-        self._refresh_pages()
+        if self._DOWNLOAD_ICONS:
+            os.makedirs(self._IMAGES_PATH, exist_ok = True)
+        else:
+            self._clear_images(remove_all = True)
 
+        self._refresh_pages()
         self.set_default_icon(self.load_icon(self.DEFAULT_ICON))
 
     def on_catalog(self):
@@ -189,7 +191,7 @@ class Notion(kp.Plugin):
             self.info(f"Page icons downloaded in {end - start} seconds")
 
         self._clear_images()
-        self._suggestions = self._generate_suggestions()
+
 
     def _download_icons(self, force_download=False):
         for page in self._pages:
@@ -212,11 +214,11 @@ class Notion(kp.Plugin):
         downloaded_images = os.listdir(self._IMAGES_PATH)
         images_to_delete = [image for image in downloaded_images if image not in images]
         for image in images_to_delete:
-            self.info(f"{image} deleted")
             os.remove(os.path.join(self._IMAGES_PATH, image))
+            self.dbg(f"{image} deleted")
 
 
-    def _generate_suggestions(self):
+    def _generate_page_suggestions(self):
         if not self._pages:
             return []
 
