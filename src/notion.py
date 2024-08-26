@@ -106,7 +106,7 @@ class Notion(kp.Plugin):
 
         if items_chain and items_chain[-1].target() == 'find_pages':
             self.set_suggestions(
-                self._generate_suggestions()
+                self._generate_page_suggestions()
             )
             self._create_actions()
 
