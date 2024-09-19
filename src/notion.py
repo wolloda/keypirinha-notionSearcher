@@ -2,7 +2,8 @@
 
 import os
 import time
-import re
+import pickle
+from typing import List
 
 import keypirinha as kp
 import keypirinha_util as kpu
@@ -44,7 +45,9 @@ class Notion(kp.Plugin):
     APP_URI_HANDLER = "notion://"
 
     DEFAULT_ICON = "res://Notion/img/notion_logo.png"
+    DOWNLOADED_PAGES_FILE = "downloaded_pages.pickle"
     ICONS_FOLDER_NAME = "icons"
+
 
     ACTION_OPEN_BROWSER = "open_browser"
     ACTION_OPEN_APP = "open_app"
@@ -54,6 +57,7 @@ class Notion(kp.Plugin):
         super().__init__()
         self._debug = False
         self._pages = []
+        self._DOWNLOADED_PAGES_PATH = os.path.join(self.get_package_cache_path(), self.DOWNLOADED_PAGES_FILE)
         self._IMAGES_PATH = os.path.join(self.get_package_cache_path(), self.ICONS_FOLDER_NAME)
 
     def on_start(self):
@@ -62,10 +66,12 @@ class Notion(kp.Plugin):
 
         if self._DOWNLOAD_ICONS:
             os.makedirs(self._IMAGES_PATH, exist_ok = True)
-        else:
-            self._clear_images(remove_all = True)
 
-        self._refresh_pages()
+        if not self._SAVE_DOWNLOADED_PAGES:
+            self._pages = self._refresh_pages()
+        else:
+            self._pages = self._load_downloaded_pages()
+
         self.set_default_icon(self.load_icon(self.DEFAULT_ICON))
 
     def on_catalog(self):
@@ -148,7 +154,7 @@ class Notion(kp.Plugin):
         self._read_config()
 
         if flags != kp.Events.DESKTOP:
-            self._refresh_pages()
+            self._pages = self._refresh_pages()
 
     def _read_config(self):
         settings = self.load_settings()
@@ -160,9 +166,10 @@ class Notion(kp.Plugin):
         self._PAGE_NAME_PREFIX = settings.get("page_name_prefix", section="var", fallback="", unquote=True)
         self._SEARCH_MODE = settings.get_bool("global_results", "main", True)
         self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
+        self._SAVE_DOWNLOADED_PAGES = settings.get_bool("save_downloaded_pages", "main", False)
         self.clear_actions()
 
-    def _create_actions(self):
+    def _create_actions(self) -> None:
         actions = [
             self.create_action(name=self.ACTION_OPEN_BROWSER,
                                label="Open page",
@@ -176,12 +183,12 @@ class Notion(kp.Plugin):
         ]
         self.set_actions(self.NOTION_PAGE_CATEGORY, actions)
 
-    def _refresh_pages(self):
+    def _refresh_pages(self) -> List:
         ''' Refresh cached list of pages. '''
         start = time.time()
-        self._pages = self._notion_searcher.search(self._MATCH_PARENTS)
+        pages = self._notion_searcher.search(self._MATCH_PARENTS)
         end = time.time()
-        self.info(f"list of {len(self._pages)} notion pages refreshed in {end - start} seconds")
+        self.info(f"list of {len(pages)} notion pages refreshed in {end - start} seconds")
 
         if self._DOWNLOAD_ICONS:
             start = time.time()
@@ -190,7 +197,17 @@ class Notion(kp.Plugin):
             self.info(f"Page icons downloaded in {end - start} seconds")
 
         self._clear_images()
+        self._save_downloaded_pages(self._pages)
 
+        return pages
+
+    def _save_downloaded_pages(self, data) -> None:
+        with open(self._DOWNLOADED_PAGES_PATH, "wb") as output_file:
+            pickle.dump(data, output_file)
+
+    def _load_downloaded_pages(self) -> List:
+        with open(self._DOWNLOADED_PAGES_PATH, "rb") as pages_file:
+            return pickle.load(pages_file)
 
     def _download_icons(self, force_download=False):
         for page in self._pages:
