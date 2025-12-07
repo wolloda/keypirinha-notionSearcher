@@ -47,6 +47,7 @@ class Notion(kp.Plugin):
     ICONS_FOLDER_NAME = "icons"
 
     ACTION_OPEN_BROWSER = "open_browser"
+    ACTION_OPEN_BROWSER_NEW_WINDOW = "open_browser_new_window"
     ACTION_OPEN_APP = "open_app"
     ACTION_COPY_URL = "copy_url"
 
@@ -123,6 +124,11 @@ class Notion(kp.Plugin):
             kpu.web_browser_command(private_mode=False, url=item.target(), execute=True)
             return
 
+        # open page in new browser window
+        if action or action.name() == self.ACTION_OPEN_BROWSER_NEW_WINDOW:
+            kpu.web_browser_command(private_mode=False, new_window=True, url=item.target(), execute=True)
+            return
+
         # open page in desktop app
         if action.name() == self.ACTION_OPEN_APP:
             kpu.shell_execute(f"{self.APP_URI_HANDLER}{item.target()[8:]}")
@@ -161,6 +167,9 @@ class Notion(kp.Plugin):
             self.create_action(name=self.ACTION_OPEN_BROWSER,
                                label="Open page",
                                short_desc="Open page in browser"),
+            self.create_action(name=self.ACTION_OPEN_BROWSER_NEW_WINDOW,
+                               label="New browser window",
+                               short_desc="Open page in new browser window"),
             self.create_action(name=self.ACTION_OPEN_APP,
                                label="Open page in client",
                                short_desc="Notion application must be installed"),
