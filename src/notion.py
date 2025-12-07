@@ -2,7 +2,8 @@
 
 import os
 import time
-import re
+import pickle
+from typing import List
 
 import keypirinha as kp
 import keypirinha_util as kpu
@@ -44,7 +45,9 @@ class Notion(kp.Plugin):
     APP_URI_HANDLER = "notion://"
 
     DEFAULT_ICON = "res://Notion/img/notion_logo.png"
+    DOWNLOADED_PAGES_FILE = "downloaded_pages.pickle"
     ICONS_FOLDER_NAME = "icons"
+
 
     ACTION_OPEN_BROWSER = "open_browser"
     ACTION_OPEN_BROWSER_NEW_WINDOW = "open_browser_new_window"
@@ -53,45 +56,53 @@ class Notion(kp.Plugin):
 
     def __init__(self):
         super().__init__()
-        self._debug = True
+        self._debug = False
         self._pages = []
+        self._DOWNLOADED_PAGES_PATH = os.path.join(self.get_package_cache_path(), self.DOWNLOADED_PAGES_FILE)
         self._IMAGES_PATH = os.path.join(self.get_package_cache_path(), self.ICONS_FOLDER_NAME)
 
     def on_start(self):
-        os.makedirs(self._IMAGES_PATH, exist_ok = True)
-
         self._read_config()
         self._notion_searcher = NotionSearcher(self._NOTION_SECRET, self._SKIP_UNTITLED_PAGES)
 
-        self._refresh_pages()
+        if self._DOWNLOAD_ICONS:
+            os.makedirs(self._IMAGES_PATH, exist_ok = True)
+
+        if not self._SAVE_DOWNLOADED_PAGES:
+            self._pages = self._refresh_pages()
+        else:
+            self._pages = self._load_downloaded_pages()
 
         self.set_default_icon(self.load_icon(self.DEFAULT_ICON))
 
     def on_catalog(self):
         catalog = [
             self.create_item(
-                category=kp.ItemCategory.KEYWORD,
-                label="Notion: Find page",
-                short_desc="Find pages by their names",
-                target="find_pages",
-                args_hint=kp.ItemArgsHint.REQUIRED,
-                hit_hint=kp.ItemHitHint.KEEPALL
-            ),
-            self.create_item(
-                category=kp.ItemCategory.KEYWORD,
+                category=self.NOTION_PAGE_CATEGORY,
                 label="Notion: Reload pages",
                 short_desc="Reload list of pages",
                 target="reload_pages",
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.NOARGS),
             self.create_item(
-                category=kp.ItemCategory.KEYWORD,
+                category=self.NOTION_PAGE_CATEGORY,
                 label="Notion: Remove images",
                 short_desc="Remove downloaded images",
                 target="remove_images",
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.NOARGS)
         ]
+
+        if self._SEARCH_MODE:
+            catalog.extend(self._generate_page_suggestions())  # Add Notion pages directly to the catalog
+        else:
+            catalog.append(self.create_item(
+                                category=self.NOTION_PAGE_CATEGORY,
+                                label="Notion: Find page",
+                                short_desc="Find pages by their names",
+                                target="find_pages",
+                                args_hint=kp.ItemArgsHint.REQUIRED,
+                                hit_hint=kp.ItemHitHint.KEEPALL))
 
         self.clear_actions(category=self.NOTION_PAGE_CATEGORY)
         self.set_catalog(catalog)
@@ -102,7 +113,7 @@ class Notion(kp.Plugin):
 
         if items_chain and items_chain[-1].target() == 'find_pages':
             self.set_suggestions(
-                self._suggestions
+                self._generate_page_suggestions()
             )
             self._create_actions()
 
@@ -149,20 +160,22 @@ class Notion(kp.Plugin):
         self._read_config()
 
         if flags != kp.Events.DESKTOP:
-            self._refresh_pages()
+            self._pages = self._refresh_pages()
 
     def _read_config(self):
         settings = self.load_settings()
 
-        self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
-        self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "main", True)
-        self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
-
         self._DOWNLOAD_ICONS = settings.get_bool("download_icons", "main", True)
         self._FORCE_ICON_DOWNLOAD = settings.get_bool("force_icon_download", "main", True)
+        self._MATCH_PARENTS = settings.get_bool("show_parent_page_name", "main", True)
+        self._NOTION_SECRET = settings.get("notion_secret", "var", unquote=True)
+        self._PAGE_NAME_PREFIX = settings.get("page_name_prefix", section="var", fallback="", unquote=True)
+        self._SEARCH_MODE = settings.get_bool("global_results", "main", True)
+        self._SKIP_UNTITLED_PAGES = settings.get_bool("skip_untitled_pages", "main", True)
+        self._SAVE_DOWNLOADED_PAGES = settings.get_bool("save_downloaded_pages", "main", False)
         self.clear_actions()
 
-    def _create_actions(self):
+    def _create_actions(self) -> None:
         actions = [
             self.create_action(name=self.ACTION_OPEN_BROWSER,
                                label="Open page",
@@ -179,11 +192,12 @@ class Notion(kp.Plugin):
         ]
         self.set_actions(self.NOTION_PAGE_CATEGORY, actions)
 
-    def _refresh_pages(self):
+    def _refresh_pages(self) -> List:
+        ''' Refresh cached list of pages. '''
         start = time.time()
-        self._pages = self._notion_searcher.search(self._MATCH_PARENTS)
+        pages = self._notion_searcher.search(self._MATCH_PARENTS)
         end = time.time()
-        self.info(f"list of {len(self._pages)} notion pages refreshed in {end - start} seconds")
+        self.info(f"list of {len(pages)} notion pages refreshed in {end - start} seconds")
 
         if self._DOWNLOAD_ICONS:
             start = time.time()
@@ -192,7 +206,17 @@ class Notion(kp.Plugin):
             self.info(f"Page icons downloaded in {end - start} seconds")
 
         self._clear_images()
-        self._suggestions = self._generate_suggestions()
+        self._save_downloaded_pages(self._pages)
+
+        return pages
+
+    def _save_downloaded_pages(self, data) -> None:
+        with open(self._DOWNLOADED_PAGES_PATH, "wb") as output_file:
+            pickle.dump(data, output_file)
+
+    def _load_downloaded_pages(self) -> List:
+        with open(self._DOWNLOADED_PAGES_PATH, "rb") as pages_file:
+            return pickle.load(pages_file)
 
     def _download_icons(self, force_download=False):
         for page in self._pages:
@@ -208,6 +232,8 @@ class Notion(kp.Plugin):
                     self.err(f"Unable to download icon for page \"{page['name']}\" at URL: {page['iconURL']}. Error: {e}")
 
     def _clear_images(self, remove_all: bool = False):
+        ''' Removes downloaded icons. Deletes only icons of non-existent (deleted) pages unless `remove_all = True`. '''
+
         images = []
         if not remove_all:
             images = list(map(lambda page: page["iconName"], self._pages))
@@ -215,11 +241,12 @@ class Notion(kp.Plugin):
         downloaded_images = os.listdir(self._IMAGES_PATH)
         images_to_delete = [image for image in downloaded_images if image not in images]
         for image in images_to_delete:
-            self.info(f"{image} deleted")
             os.remove(os.path.join(self._IMAGES_PATH, image))
+            self.dbg(f"{image} deleted")
 
 
-    def _generate_suggestions(self):
+    def _generate_page_suggestions(self):
+        ''' Creates catalog items for downloaded Notion pages '''
         if not self._pages:
             return []
 
@@ -228,7 +255,7 @@ class Notion(kp.Plugin):
         for suggestion in self._pages:
             icon_handle = None
 
-            label = suggestion["name"]
+            label = f"{self._PAGE_NAME_PREFIX}{suggestion['name']}"
 
             if suggestion["iconName"]:
                 icon_path = os.path.join(self._IMAGES_PATH, suggestion["iconName"])
@@ -241,7 +268,7 @@ class Notion(kp.Plugin):
                 label += f" ({suggestion['parent']})"
 
             suggestions.append(self.create_item(
-                category=self.NOTION_PAGE_CATEGORY,
+                category=self.NOTION_PAGE_CATEGORY,  # Changed from self.NOTION_PAGE_CATEGORY
                 label=label,
                 short_desc=suggestion["url"],
                 target=suggestion["url"],
